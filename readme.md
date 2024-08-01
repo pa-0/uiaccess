@@ -1,28 +1,29 @@
-# 通过System令牌获取UIAccess
+# Get UIAccess through System token
 
-此项目用于获取UIAccess权限，它可以让你的程序窗口获得更高的Z序，比如高于任务管理器等，与屏幕键盘同层。可以用来解决制作屏幕标记/录制工具时窗口被遮挡的问题。
+This project is used to obtain UIAccess permissions, which allows your program window to obtain a higher Z order, such as higher than the task manager, and on the same layer as the on-screen keyboard. It can be used to solve the problem of the window being blocked when making a screen marking/recording tool.
 
-## 效果对比
+## Effect comparison
 
-以任务管理器为例，先打开任务管理器的”置于顶层“，它的窗口Band是`ZBID_SYSTEM_TOOLS`，高于常规窗口Band。
+Taking Task Manager as an example, first open "Bring to Top" of Task Manager. Its window Band is `ZBID_SYSTEM_TOOLS`, which is higher than the normal window Band.
 
-未启用UIAccess时，无论是否`SetWindowPos(HWND_TOPMOST)`，窗口Z序始终低于任务管理器：
+When UIAccessi is not enabled, the window Z order is always lower than the task manager, regardless of whether `SetWindowPos(HWND_TOPMOST)` is used:
 
-启用UIAccess并调用`SetWindowPos(HWND_TOPMOST)`后，窗口Z序将高于任务管理器：
+After enabling UIAccess and calling `SetWindowPos(HWND_TOPMOST)`, the window Z order will be higher than the task manager:
 
-## 条件和用法
+## Conditions and usage
 
-程序需要提权运行（`elevated`），因此最好设置请求管理员权限的清单，或者通过某个已提权的进程启动，否则获取不到UIAccess，函数返回值为`ERROR_NOT_FOUND`。加入头文件和源文件后，在程序的最开头调用`PrepareForUIAccess()`即可，如果设置成功则返回`ERROR_SUCCESS`，否则返回错误代码。
+The program needs to be run with elevated privileges, so it is best to set a list of administrator privileges, or start it through an elevated process. Otherwise, ULAccess cannot be obtained, and the function return value is `ERROR_NOT_FOUND`. After adding header files and source files, call `PrepareForUIAccess()` at the very beginning of the program. If the setting is successful, `ERROR_SUCCESS` is returned, otherwise an error code is returned.
 
-## 程序原理
+## Program principle
 
-> 相比于上一版本，修复了用户权限“替换进程令牌”关闭时UIAccess设置失败的问题；程序从启动进程3次改为了2次，而且无需启动System权限的另一个进程，免去了IPC通信的过程。
+Compared with the previous version, the problem of UIAccess setting failure when the user right "Replace process token" is turned off is fixed: the program starts the process twice instead of 3 times, and there is no need to start another process with System permissions, eliminating the IPC communication process.
 
-进程以管理员权限启动，然后检测自身是否具有UIAccess权限。此时还未获取权限，所以它遍历进程列表，尝试获取同一Session下`winlogon.exe`的令牌 ，并用这个令牌创建另一个具有`TokenUIAccess`的令牌，然后用它启动另一个实例。此实例检测UIAccess权限，权限已经满足，返回`ERROR_SUCCESS`，随后旧进程退出，具有权限的新进程继续运行。
+The process is started with administrator privileges, and then checks whether it has UIAccess privileges. 
+At this point, it has not yet obtained the privileges, so it traverses the process list and tries to obtain the token of `winlogon.exe` under the same session, and uses this token to create another token with `TokenUIAccess`, and then uses it to start another instance. This instance checks the UIAccess privilege, and the privileges are satisfied, and returns `ERROR_SUCCESS`, then the old process exits, and the new process with privileges continues to run.
 
-## 窗口Z序的介绍
+## Introduction to Window Z Order
 
-在Windows7及以下系统，直接用`SetWindowPos(HWND_TOPMOST)`可以使窗口在最上层。但从Windows8开始，微软引入了其他窗口段（Band），它们从低到高的顺序如下：
+In Windows 7 and below, you can directly use `SetWindowPos(HWND_TOPHOST)` to put the window at the top, but starting from Windows 8, Microsoft introduced other window segments (Bands), and their order from low to high is as follows
 
 ```
 ZBID_DESKTOP
@@ -40,11 +41,11 @@ ZBID_GENUINE_WINDOWS
 ZBID_UIACCESS
 ```
 
-默认的窗口段是`ZBID_DESKTOP`，这导致无论如何`SetWindowPos`，窗口的Z序始终低于设置过其他更高层段的窗口。
+The default window segment is `ZBID_DESKTOP`, which means that no matter how `SetWindowPos` is called, the Z order of the window is always lower than that of windows with other higher segments set.
 
-那么为什么不设置其他窗口段呢？
+So why not set other window segments?
 
-Windows中有下面这些API可以改变程序的窗口段：
+There are the following APIs in Windows that can change the window segment of a program:
 
 ```c
 HWND WINAPI CreateWindowInBand(
@@ -85,24 +86,24 @@ BOOL WINAPI SetWindowBand(
 );
 ```
 
-但调用`CreateWindowInBand(Ex)`的程序必须使用微软的证书进行数字签名，也就是说，只有Windows内置的程序才能使用这些API，任务管理器正是这么做的。而`SetWindowBand`需要调用私有API：`NtUserEnableIAMAccess`，它有一个类似句柄的参数（key），此句柄只能通过`NtUserAcquireIAMKey`获取。而`NtUserAcquireIAMKey`调用成功的条件是，调用线程必须是当前桌面线程（即调用`SetShellWindows(Ex)`的线程），而且只能获取一次，否则函数都会`ERROR_ACCESS_DENIED`，你甚至不能注入`explorer.exe`获取key，因为`explorer.exe`已经调用过一次`NtUserAcquireIAMKey`了。也就是说，只有桌面的管理者能使用`SetWindowBand`。
+But the program that calls `CreateWindowInBand(Ex)` must be digitally signed with a Microsoft certificate, that is, only Windows built-in programs can use these APIs, which is what the Task Manager does. `SetWindowBand` needs to call a private API: `NtUserEnableIAMAccess`, which has a handle-like parameter (key), which can only be obtained through `NtUserAcquireIAMKey`. The condition for the successful call of `NtUserAcquireIAMKey` is that the calling thread must be the current desktop thread (that is, the thread that calls `SetShellWindows(Ex))`, and it can only be obtained once, otherwise the function will return `ERROR_ACCESS_DENIED`. You can't even inject `explorer.exe` to obtain the key because `explorer.exe` has already called `NtUserAcquireIAMKey` once. That is, only the desktop manager can use `SetWindowBand`.
 
-那有没有其他办法呢？注意到屏幕键盘（`osk.exe`）和VS的一个工具`Inspect.exe`的窗口也可以设置比任务管理器高的窗口。逆向后发现它们也不过只是`SetWindowPos(HWND_TOPMOST)`而已，最后发现是程序的清单中有一项：
+Is there any other way? I noticed that the on-screen keyboard `(osk.exe)` and a VS tool `Inspect.exe` can also set the window higher than the task manager. After reverse engineering, I found that they are just `SetWindowPos(HWND_TOPHOST)`. Finally, I found that there is an item in the program list:
 
 ```
 <requestedExecutionLevel level="asInvoker" uiAccess="true"/>
 ```
 
-[MSDN](https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/user-account-control-allow-uiaccess-applications-to-prompt-for-elevation-without-using-the-secure-desktop)中解释说，这个UIAccess权限用于支持无障碍服务，通过它可以在未提权的进程下访问已提权进程的窗口。出于安全考虑，如果要启用它，必须满足：
+[MSDN](https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/user-account-control-allow-uiaccess-applications-to-prompt-for-elevation-without-using-the-secure-desktop) explains that this UIAccess permission is used to support accessibility services. Through it, the window of the elevated process can be accessed from the non-elevated process. For security reasons, if you want to enable it, you must meet the following conditions:
 
-* 应用程序必须具有数字签名，可以使用与本地计算机上的受信任根证书颁发机构存储关联的数字证书进行验证。
-* 应用程序必须安装在只能由管理员写入的本地文件夹中，例如`Program Files`目录。允许的目录包括：
-  * `%ProgramFiles%`和它的子目录
-  * `%WinDir%`和它的子目录，除了少数标准用户具有写权限的子目录。
+* The application must be digitally signed and can be verified using a digital certificate associated with the Trusted Root Certification Authorities store on the local computer. 
+* The application must be installed in a local folder that can be written to only by administrators, such as the `Program Files` directory. Permitted directories include:
+  * `%ProgramFiles%` and its subdirectories
+  * `%WinDir%` and its subdirectories, except for a few subdirectories that standard users have write permissions to.
 
-进程令牌中就有着`TokenUIAccess`这个属性，这意味着我们在提权后，可以通过`SetTokenInformation`设置此权限，从而绕过数字签名和指定的安装路径。
+The `TokenUIAccess` property is available in the process token, which means that after the privilege is elevated, we can set this permission through `SetTokenInformation` to bypass the digital signature and the specified installation path.
 
-但经过一番测试，我最终发现要完成这个操作必须具有`SeTcbPrivilege`权限，所以一个解决方案是从其他系统进程中“偷”一个令牌，这样就能获取权限了。然而修改已运行的程序的UIAccess是无效的，所以最后只能另起一个进程了。虽然这样有点瑕疵，但还是比之前的注入`explorer.exe`容错性要好、比数字签名更实际。
+But after some testing, I finally found that the `SeTcbPrivilege` privilege is required to complete this operation, so one solution is to "steal" a token from another system process, so that the privilege can be obtained. However, modifying the UIAccess of a running program is invalid, so in the end I can only start another process. Although this is a bit flawed, it is still more fault-tolerant than the previous injection into `explorer.exe` and more practical than digital signatures
 
 ## Reference
 
