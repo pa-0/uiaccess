@@ -4,11 +4,13 @@ This project is used to obtain UIAccess permissions, which allows your program w
 
 ## Effect comparison
 
-Taking Task Manager as an example, first open "Bring to Top" of Task Manager. Its window Band is `ZBID_SYSTEM_TOOLS`, which is higher than the normal window Band.
+Taking Task Manager as an example, first open "Bring to Top" of Task Manager. Its window Band is `ZBID_SYSTEM_TOOLS`, which is higher than the normal window Band. When UIAccess is not enabled, the window Z order is always lower than the task manager, even using `SetWindowPos(HWND_TOPMOST)`: 
 
-When UIAccessi is not enabled, the window Z order is always lower than the task manager, regardless of whether `SetWindowPos(HWND_TOPMOST)` is used:
+![uia_off](https://github.com/user-attachments/assets/7a5820c0-35b8-4c59-beca-d1b843d44445)
 
-After enabling UIAccess and calling `SetWindowPos(HWND_TOPMOST)`, the window Z order will be higher than the task manager:
+After enabling UIAccess and calling `SetWindowPos(HWND_TOPMOST)`, the window Z order will be higher than the task manager: 
+
+![uia_on](https://github.com/user-attachments/assets/52ec14cf-2a0e-4228-9d92-b33ebd05f919)
 
 ## Conditions and usage
 
