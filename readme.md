@@ -8,11 +8,7 @@
 
 未启用UIAccess时，无论是否`SetWindowPos(HWND_TOPMOST)`，窗口Z序始终低于任务管理器：
 
-![启用前](https://raw.githubusercontent.com/killtimer0/uiaccess/master/img/uia_off.gif)
-
 启用UIAccess并调用`SetWindowPos(HWND_TOPMOST)`后，窗口Z序将高于任务管理器：
-
-![启用后](https://raw.githubusercontent.com/killtimer0/uiaccess/master/img/uia_on.gif)
 
 ## 条件和用法
 
@@ -108,7 +104,7 @@ BOOL WINAPI SetWindowBand(
 
 但经过一番测试，我最终发现要完成这个操作必须具有`SeTcbPrivilege`权限，所以一个解决方案是从其他系统进程中“偷”一个令牌，这样就能获取权限了。然而修改已运行的程序的UIAccess是无效的，所以最后只能另起一个进程了。虽然这样有点瑕疵，但还是比之前的注入`explorer.exe`容错性要好、比数字签名更实际。
 
-## 参考
+## Reference
 
-[Window z-order in Windows 10 – ADeltaX Blog](https://blog.adeltax.com/window-z-order-in-windows-10/)，中文版：[Windows 10中的窗体Z序](https://blog.csdn.net/weixin_43820461/article/details/107610331)
+[Window z-order in Windows 10 – ADeltaX Blog](https://blog.adeltax.com/window-z-order-in-windows-10/)
 
